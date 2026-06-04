@@ -1,0 +1,5 @@
+# Shell scripts and YAML manifests must use LF so they run on Linux clusters
+# regardless of the checkout platform.
+*.sh   text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
