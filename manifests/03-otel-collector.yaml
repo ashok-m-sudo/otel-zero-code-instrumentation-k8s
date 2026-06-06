@@ -1,0 +1,54 @@
+# OpenTelemetryCollector custom resource.
+#
+# The OTel Operator reconciles this CR into a Deployment + Service. Because the
+# CR is named "central-otel", the generated Service is "central-otel-collector"
+# in the observability namespace -- i.e. its in-cluster DNS is:
+#   central-otel-collector.observability.svc.cluster.local
+# which is exactly the endpoint the Instrumentation CR (05-instrumentation.yaml)
+# exports spans to.
+#
+# This is a deliberately focused pipeline: receive OTLP, drop probe/metrics
+# noise, batch, and forward to Jaeger. No spanmetrics, no tail sampling --
+# those live in the sibling repos.
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: central-otel
+  namespace: observability
+spec:
+  image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:latest
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 75
+        spike_limit_percentage: 25
+      batch:
+        send_batch_size: 10000
+        timeout: 10s
+      # Drop noise: health checks, readiness probes, metrics endpoints
+      filter/noise:
+        error_mode: ignore
+        traces:
+          span:
+            - attributes["http.target"] == "/health-check"
+            - attributes["http.target"] == "/health"
+            - attributes["http.target"] == "/metrics"
+    exporters:
+      otlphttp:
+        endpoint: "http://jaeger-collector.observability.svc.cluster.local:4318"
+        tls:
+          insecure: true
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, filter/noise, batch]
+          exporters: [otlphttp]
