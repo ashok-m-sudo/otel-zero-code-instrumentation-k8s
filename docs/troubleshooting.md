@@ -6,7 +6,7 @@ Common failure modes when standing up zero-code tracing, with the underlying cau
 
 **Symptom:** `kubectl get pods -n opentelemetry-operator-system` shows the controller manager never reaching `Running`/`Ready`; events mention failing to mount a certificate secret or the webhook failing TLS.
 
-**Cause:** The operator's admission webhook needs TLS certificates that cert-manager provisions. If cert-manager isn't installed (or its `Certificate` hasn't been issued yet), the operator can't come up.
+**Cause:** The operator's admission webhook needs TLS certificates that cert-manager provisions. If cert-manager isn't installed (or its `Certificate` hasn't been issued yet), the operator can't come up. 
 
 **Fix:** Install cert-manager first and confirm certs are issued.
 
